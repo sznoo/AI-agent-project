@@ -23,6 +23,24 @@ token = os.getenv("HF_TOKEN")
 
 from huggingface_hub import login
 
+from prompt_parser import promptParser
+from event_parser import eventParser
+
+
+class StrategyManager:
+    def __init__(self):
+        return
+
+    def get_strategy(self, user_input: str) -> dict:
+        baseline = {
+            "prompt_parsing": "baseline",
+            "event_parsing": "baseline",
+            "grounding": "baseline",
+            "reasoning": "baseline",
+            "prediction": "baseline",
+        }
+        return baseline
+
 
 class Agent:
     def __init__(self, token=token):
@@ -31,21 +49,45 @@ class Agent:
         """
         self.token = token
 
-        # self.prompt_parser = prompt_parser  # 문장 → video_path, question
-        # self.event_parser = event_parser  # question → event queue
-        # self.grounder = grounder  # event queue → object, action grounding
-        # self.reasoner = reasoner  # grounded info → reasoning plan
-        # self.predictor = predictor  # plan → final answer
-
         self.phi3 = Phi3Wrapper()
         self.owlvit = OwlViTWrapper()
         self.pali3 = Pali3Wrapper()
 
-    def run_single_step(self, prompt: str) -> str:
+        self.strategy_manager = StrategyManager()
+
+        models_promptparser = {
+            "phi3": self.phi3,
+        }
+        models_eventparser = {
+            "phi3": self.phi3,
+        }
+        self.prompt_parser = promptParser(models_promptparser)
+        self.event_parser = eventParser(models_eventparser)
+
+    def run_single_step(self, user_input: str) -> str:
         """
         단일 단계 실행: prompt → answer
         """
-        return prompt
+        stratagy = self.strategy_manager.get_strategy(user_input)
+        prompt_parsing_method = stratagy.get("prompt_parsing", "baseline")
+        prompt_parsing_time, parsed_prompt, method = self.prompt_parser.parse(
+            user_input, method=prompt_parsing_method
+        )
+        print(f">>>Parsed prompt ({method}): {parsed_prompt}")
+        print(f">>>Prompt parsing time ({method}): {prompt_parsing_time:.2f} seconds")
+
+        video_path = parsed_prompt.get("video_path", "")
+        question = parsed_prompt.get("question", "")
+
+        event_parsing_method = stratagy.get("event_parsing", "baseline")
+        event_parsing_time, event_parsed_codes, method = self.event_parser.parse(
+            question=question, method=event_parsing_method
+        )
+        print(f">>>Parsed codes ({method})")
+        for code in event_parsed_codes:
+            print(f"   {code}")
+        print(f">>>Event parsing time ({method}): {event_parsing_time:.2f} seconds")
+        return user_input
         # parsed = self._parse_prompt(prompt)
         # events = self._parse_events(parsed)
         # grounded = self._ground(events)
@@ -63,6 +105,13 @@ class Agent:
             if prompt.lower() == "exit":
                 print("Exiting the agent.")
                 break
+            if prompt == "":
+                sample_prompt = (
+                    "In the video 'videos/cooking.mp4', what is the woman doing?"
+                )
+                print(f"Prompt cannot be empty. trying sample prompt :{sample_prompt}")
+                prompt = sample_prompt
+
             answer = self.run_single_step(prompt)
             print(f"Answer: {answer}")
 

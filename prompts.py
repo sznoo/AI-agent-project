@@ -443,3 +443,15 @@ Main query: Provide an answer to the Question. Keep your answer short and concis
 Answer:
 """
     return prompt5_format.format(summary=summary, question=question)
+
+
+def generate_user_prompt(user_input: str) -> str:
+    return f"""Extract the video path and the question from the user's input.
+
+Input: In the video 'videos/cooking.mp4', what is the woman doing?
+Output:
+Video: videos/cooking.mp4
+Question: What is the woman doing?
+
+Input: {user_input}
+Output:"""
