@@ -1,4 +1,3 @@
-# from models.owl_vit import OwlViTWrapper
 # from models.pali3 import Pali3Wrapper
 # from models.gemma3 import Gemma3Wrapper
 # import prompts
@@ -6,6 +5,9 @@
 # from memory import Memory
 # from api import APICodeExecutor
 from models.phi3 import Phi3Wrapper
+from models.owlvit import OwlViTWrapper
+from models.pali3 import Pali3Wrapper
+
 from transformers.utils import logging
 
 logging.set_verbosity_error()
@@ -36,6 +38,8 @@ class Agent:
         # self.predictor = predictor  # plan → final answer
 
         self.phi3 = Phi3Wrapper()
+        self.owlvit = OwlViTWrapper()
+        self.pali3 = Pali3Wrapper()
 
     def run_single_step(self, prompt: str) -> str:
         """
