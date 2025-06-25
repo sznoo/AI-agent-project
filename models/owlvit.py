@@ -1,5 +1,6 @@
 import torch
 from transformers import OwlViTProcessor, OwlViTForObjectDetection
+import torchvision.transforms.functional as TF
 
 # import re
 
@@ -22,60 +23,54 @@ class OwlViTWrapper:
         )
         return results[0]  # Return the first result
 
-    # def answer_question(self, image, question):
-    #     """
-    #     image: PIL.Image
-    #     question: str
-    #     return: str (short answer)
-    #     """
-    #     question = question.lower().strip()
-
-    #     # 명사 추출 (단수/복수 처리 포함)
-    #     match = re.search(
-    #         r"(cat|dog|person|man|woman|car|bird|bottle|book|laptop|phone|chair|.*)",
-    #         question,
-    #     )
-    #     object_name = match.group(1) if match else None
-    #     if object_name is None:
-    #         return "unsupported"
-
-    #     label = f"a photo of a {object_name}"
-    #     result = self.detect_objects(image, [[label]])
-
-    #     num_boxes = len(result["boxes"])
-    #     labels = result["text_labels"]
-
-    #     # 질문 유형 분기
-    #     if question.startswith("is there") or question.startswith("are there"):
-    #         return "yes" if num_boxes > 0 else "no"
-    #     elif question.startswith("how many"):
-    #         return str(num_boxes)
-    #     elif question.startswith("where"):
-    #         if num_boxes == 0:
-    #             return "not found"
-    #         else:
-    #             boxes = result["boxes"]
-    #             return str([box.tolist() for box in boxes])
-    #     else:
-    #         return "unsupported"
+    def detect_images_from_frame(self, frame, text_labels):
+        pil_image = TF.to_pil_image(frame)
+        result = self.detect_objects(pil_image, text_labels)
+        return result
 
 
-# if __name__ == "__main__":
-#     wrapper = OwlViTWrapper()
-#     # # 모델 및 프로세서 로드
-#     # processor = OwlViTProcessor.from_pretrained("google/owlvit-base-patch32")
-#     # model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32")
+if __name__ == "__main__":
+    import time
+    import requests
+    from PIL import Image
+    import cv2
 
-#     # 테스트할 이미지 불러오기
-#     url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-#     image = Image.open(requests.get(url, stream=True).raw)
+    def read_video_frames(video_path, max_frames=None):
+        frames_dict = {}
+        cap = cv2.VideoCapture(video_path)
+        frame_count = 0
 
-#     # 탐지할 객체 텍스트 쿼리 정의
-#     text_labels = [["a photo of a cat", "a photo of a dog"]]
-#     starttime = time.time()
-#     # result = wrapper.detect_objects(image, text_labels)
-#     # print(result)
-#     print(wrapper.answer_question(image, "what is the cat doing?"))  # → "yes"
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-#     print(f"Time taken: {time.time() - starttime:.2f} seconds")
-#     # 입력 데이터 전처리
+            # BGR -> RGB 변환, float32 정규화 후 텐서로 변환
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_tensor = (
+                torch.from_numpy(frame).permute(2, 0, 1).float() / 255.0
+            )  # (3, H, W)
+            frames_dict[frame_count] = frame_tensor
+
+            frame_count += 1
+            if max_frames and frame_count >= max_frames:
+                break
+
+        cap.release()
+
+        return frames_dict
+
+    wrapper = OwlViTWrapper()
+    frames_dict = read_video_frames(
+        "/home/intern/jinwoo/AI-agent-project/videos/ivqa_example2.webm",
+    )  #
+    # 탐지할 객체 텍스트 쿼리 정의
+    image = frames_dict[0]  # 첫 번째 프레임을 사용
+    text_labels = [["hand"]]
+    starttime = time.time()
+    result = wrapper.detect_images_from_frame(image, text_labels)
+    print(result, result["scores"].shape)
+    # print(wrapper.answer_question(image, "what is the cat doing?"))  # → "yes"
+
+    print(f"Time taken: {time.time() - starttime:.2f} seconds")
+# # 입력 데이터 전처리

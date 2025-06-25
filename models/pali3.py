@@ -3,6 +3,7 @@ from transformers import PaliGemmaForConditionalGeneration, PaliGemmaProcessor
 from PIL import Image
 import requests
 import time
+import torchvision.transforms.functional as TF
 
 
 class Pali3Wrapper:
@@ -28,6 +29,16 @@ class Pali3Wrapper:
             answer = self.processor.decode(output, skip_special_tokens=True)
 
         return answer
+
+    def infer_from_frame(self, frame, prompt: str, max_new_tokens: int = 20) -> str:
+        pil_image = TF.to_pil_image(frame)
+        result = self.infer(pil_image, prompt, max_new_tokens)
+        return result
+
+    def caption_frame_with_pali3(self, frame) -> str:
+        prompt = "Describe this image."
+        caption = self.infer_from_frame(frame, prompt, max_new_tokens=30)
+        return caption
 
 
 # if __name__ == "__main__":

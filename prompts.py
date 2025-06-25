@@ -1,4 +1,4 @@
-def generate_prompt1(question="what is in the background of the video?"):
+def generate_prompt1(question):
     """
     Generate a prompt for the main query based on the question and plans.
     """
@@ -134,7 +134,7 @@ def get_calls_prompt1(output, question):
     return calls
 
 
-def generate_prompt2(phrase="what did the man throw?"):
+def generate_prompt2(phrase):
     """
     Generate a prompt for the main query based on the phrase.
     """
@@ -305,7 +305,7 @@ def get_calls_prompt2(output, phrase):
     return calls
 
 
-def generate_prompt3(qatype="what", question="what is the cat doing?"):
+def generate_prompt3(qatype, question):
     """
     Generate a prompt for the main query based on the question type and question.
     """
@@ -433,16 +433,33 @@ summary = """
 question = "what is in the background?"
 
 
-def generate_prompt5(summary=summary, question=question):
+def generate_prompt5(summary, question):
     prompt5_format = f"""
 Answer the main query based on the 'video summary' and 'question' below.
-Video summary:
+Video summary: 
 {summary}
 Question: {question}
-Main query: Provide an answer to the Question. Keep your answer short and concise; your answer must be one or two words without any additional texts, characters, or spaces.
+Main query: Provide an answer to the Question. Keep your answer short and concise; your answer must be one or two words without any additional texts, characters, or spaces. Your answer must not repeat.
 Answer:
 """
     return prompt5_format.format(summary=summary, question=question)
+
+
+def generate_prompt5_from_examples(examples, summary, question) -> str:
+    header = (
+        "Answer the main query based on the 'video summary' and 'question' below.\n"
+    )
+    tail = f"""Video summary: 
+{summary}
+Question: {question}
+Main query: Provide an answer to the Question. Keep your answer short and concise; your answer must be one or two words without any additional texts, characters, or spaces. Your answer must not repeat.
+Answer:
+"""
+    body = ""
+    for example in examples:
+        body += str(example) + "\n\n"
+
+    return header + body + tail
 
 
 def generate_user_prompt(user_input: str) -> str:
@@ -453,5 +470,63 @@ Output:
 Video: videos/cooking.mp4
 Question: What is the woman doing?
 
+Input: What does the baby do after he lies down near the ending of the video 'videos/ivqa_example2.webm'?
+Output:
+Video: videos/ivqa_example2.webm
+Question: What does the baby do after he lies down near the ending of the video?
+
+Input: What does the baby do after he lies down near the ending of the video 'videos/ivqa_example2.webm'?
+Output:
+Video: videos/ivqa_example2.webm
+Question: What does the baby do after he lies down near the ending of the video?
+
+Input: What is the main object in this video?video_path: /hub_data2/intern/jinwoo/iVQA/videos/yPWhbdvvJ-A_14_28.webm
+Output:
+Video: /hub_data2/intern/jinwoo/iVQA/videos/yPWhbdvvJ-A_14_28.webm
+Question: What is the main object in this video?
+
 Input: {user_input}
 Output:"""
+
+
+def generate_prompt_similar_noun(noun: str) -> str:
+    prompt = f"""
+You are an assistant that helps improve object recognition in visual question answering.
+
+Task: Given a noun, generate a list of 5 alternative object labels that are semantically similar and more likely to be detected in a video frame using an object detection model. The labels must be single words or short phrases, and must be compatible with visual grounding.
+
+Noun: man
+Similar object labels: person, guy, male, adult man, human
+
+Noun: woman
+Similar object labels: lady, female, adult woman, person, human
+
+Noun: cat
+Similar object labels: feline, kitten, house cat, pet cat, animal
+
+Noun: {noun}
+Similar object labels:"""
+    return prompt.strip()
+
+
+def generate_prompt_related_questions(question: str) -> str:
+    prompt = f"""
+You are an assistant that generates supporting questions for visual reasoning.
+
+Task: Given a main visual question, generate a list of 3 concise supporting questions that are semantically related to the main question and help provide additional context. The supporting questions should describe surrounding actions, relevant objects, or related events in the scene.
+
+Main question: What is the boy doing?
+Supporting questions:
+- Where is the boy?
+- What objects are around the boy?
+- Is the boy interacting with someone?
+
+Main question: Why did the woman raise her hand?
+Supporting questions:
+- What is the woman doing before she raised her hand?
+- Who else is near the woman?
+- Is there any signal or prompt that caused her to react?
+
+Main question: {question}
+Supporting questions:"""
+    return prompt.strip()
